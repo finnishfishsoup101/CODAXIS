@@ -1,9 +1,11 @@
 #include "repository_health_service.h"
+#include "git_analytics_service.h"
 #include "git_client.h"
 
 #include <QDir>
 #include <QStringList>
 #include <QChar>
+#include <QSet>
 
 RepositoryHealthService::RepositoryHealthService(GitClient *client)
     : GitService(client)
@@ -76,15 +78,42 @@ bool RepositoryHealthService::refresh(const QString &repoPath)
         totalCommits = revCountResult.stdOut.trimmed().toInt();
     }
 
-    // 2. Unique contributors on HEAD
+    // 2. Unique contributors on HEAD with normalized identity attribution
     int uniqueContributors = 0;
     const GitResult shortlogResult = m_client->execute(
         repoPath,
-        {QStringLiteral("shortlog"), QStringLiteral("-s"), QStringLiteral("-n"), QStringLiteral("HEAD")}
+        {QStringLiteral("shortlog"), QStringLiteral("-s"), QStringLiteral("-n"), QStringLiteral("-e"), QStringLiteral("HEAD")}
     );
     if (shortlogResult.success && !shortlogResult.stdOut.isEmpty()) {
         const QStringList authorLines = shortlogResult.stdOut.split(u'\n', Qt::SkipEmptyParts);
-        uniqueContributors = static_cast<int>(authorLines.size());
+        QSet<QString> uniqueKeys;
+        for (const QString &rawLine : authorLines) {
+            const QString line = rawLine.trimmed();
+            const int emailStart = line.indexOf(u'<');
+            const int emailEnd = line.indexOf(u'>', emailStart);
+            QString email;
+            QString name;
+            if (emailStart != -1 && emailEnd > emailStart) {
+                email = line.mid(emailStart + 1, emailEnd - emailStart - 1).trimmed();
+                int sepIndex = 0;
+                while (sepIndex < line.size() && !line[sepIndex].isSpace()) {
+                    sepIndex++;
+                }
+                name = line.mid(sepIndex, emailStart - sepIndex).trimmed();
+            } else {
+                int sepIndex = 0;
+                while (sepIndex < line.size() && !line[sepIndex].isSpace()) {
+                    sepIndex++;
+                }
+                name = line.mid(sepIndex).trimmed();
+            }
+
+            const QString key = GitAnalyticsService::normalizeContributorKey(name, email);
+            if (!key.isEmpty()) {
+                uniqueKeys.insert(key);
+            }
+        }
+        uniqueContributors = static_cast<int>(uniqueKeys.size());
     }
 
     // 3. Tracked files (git ls-files)
@@ -123,8 +152,8 @@ bool RepositoryHealthService::refresh(const QString &repoPath)
         const GitResult lastCommitResult = m_client->execute(
             repoPath,
             {QStringLiteral("log"), QStringLiteral("-1"),
-             QStringLiteral("--pretty=format:%h%x1F%ad%x1F%s"),
-             QStringLiteral("--date=short")}
+              QStringLiteral("--pretty=format:%h%x1F%ad%x1F%s"),
+              QStringLiteral("--date=short")}
         );
         if (lastCommitResult.success && !lastCommitResult.stdOut.isEmpty()) {
             const QStringList fields = lastCommitResult.stdOut.split(QChar(0x1F));
