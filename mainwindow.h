@@ -19,6 +19,8 @@ class QStackedWidget;
 class QTableWidget;
 QT_END_NAMESPACE
 
+class GearWidget;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -26,6 +28,7 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
+    bool validateAndOpenRepository(const QString &dirPath);
 
 private slots:
     void onOpenRepositoryClicked();
@@ -34,17 +37,21 @@ private slots:
 private:
     void setupShellUi();
     void applyTheme();
-    bool validateAndOpenRepository(const QString &dirPath);
     void loadCommitHistory();
     void loadContributors();
     void loadHotspots();
     void loadRepositoryHealth();
+    void loadDashboard();
+    /** Drive the gear: rotating when repo loaded + Dashboard active. */
+    void updateGearState();
 
     Ui::MainWindow *ui;
     QList<QPushButton*> m_navButtons;
     QLabel *m_sidebarStatusLabel{nullptr};
     QLabel *m_statusLabel{nullptr};
     QStackedWidget *m_contentStack{nullptr};
+    class GearWidget *m_gearWidget{nullptr};
+    class DashboardWidget *m_dashboardWidget{nullptr};
     QTableWidget *m_commitsTable{nullptr};
     QTableWidget *m_contributorsTable{nullptr};
     QTableWidget *m_hotspotsTable{nullptr};
