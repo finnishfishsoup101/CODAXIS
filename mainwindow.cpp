@@ -2,7 +2,10 @@
 #include "./ui_mainwindow.h"
 #include "ui/theme.h"
 #include "ui/repository_canvas.h"
+#include "ui/dashboard_widget.h"
+#include "ui/gear_widget.h"
 #include <QGraphicsDropShadowEffect>
+#include <QScrollArea>
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -44,6 +47,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupShellUi();
     applyTheme();
     loadRepositoryHealth();
+    loadDashboard();
 }
 
 MainWindow::~MainWindow()
@@ -70,7 +74,7 @@ void MainWindow::setupShellUi()
     sidebarLayout->setSpacing(0);
 
     // Brand header
-    auto *brandLogo = new QLabel(QStringLiteral("CODAXIS"), sidebarWidget);
+    auto *brandLogo = new QLabel(QStringLiteral("<span style='color:#f1f5f9; font-weight:800; font-size:16px;'>COD</span><span style='color:#ff2d95; font-weight:800; font-size:16px;'>AXIS</span> <span style='color:#22d3ee; font-size:10px;'>●</span>"), sidebarWidget);
     brandLogo->setObjectName(QStringLiteral("brandLogo"));
     sidebarLayout->addWidget(brandLogo);
     sidebarLayout->addSpacing(24);
@@ -83,11 +87,12 @@ void MainWindow::setupShellUi()
 
     // Navigation entries
     const QStringList navItems = {
-        QStringLiteral("Overview"),
-        QStringLiteral("Commits"),
-        QStringLiteral("Contributors"),
-        QStringLiteral("Hotspots"),
-        QStringLiteral("Repository Health")
+        QStringLiteral("◈  Overview"),
+        QStringLiteral("❖  Dashboard"),
+        QStringLiteral("⎇  Commits"),
+        QStringLiteral("👥  Contributors"),
+        QStringLiteral("🔥  Hotspots"),
+        QStringLiteral("🛡️  Repository Health")
     };
 
     for (int i = 0; i < navItems.size(); ++i) {
@@ -112,6 +117,15 @@ void MainWindow::setupShellUi()
 
     // Push status label to the bottom of the sidebar
     sidebarLayout->addStretch(1);
+
+    // ---- Gear widget: decorative brand element in the empty sidebar space ----
+    m_gearWidget = new GearWidget(sidebarWidget);
+    // Fixed height keeps the gear compact; width expands to fill the sidebar.
+    // The widget's own paintEvent scales the gear to the available area.
+    m_gearWidget->setFixedHeight(110);
+    sidebarLayout->addWidget(m_gearWidget);
+    sidebarLayout->addSpacing(8);
+    // -------------------------------------------------------------------------
 
     m_sidebarStatusLabel = new QLabel(QStringLiteral("● No repository loaded"), sidebarWidget);
     m_sidebarStatusLabel->setObjectName(QStringLiteral("sidebarStatusLabel"));
@@ -141,9 +155,9 @@ void MainWindow::setupShellUi()
     welcomeCard->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
     auto *cardShadow = new QGraphicsDropShadowEffect(welcomeCard);
-    cardShadow->setBlurRadius(20);
-    cardShadow->setColor(QColor(50, 45, 38, 16));
-    cardShadow->setOffset(0, 4);
+    cardShadow->setBlurRadius(28);
+    cardShadow->setColor(QColor(8, 4, 16, 160));
+    cardShadow->setOffset(0, 6);
     welcomeCard->setGraphicsEffect(cardShadow);
 
     auto *welcomeLayout = new QVBoxLayout(welcomeCard);
@@ -153,7 +167,7 @@ void MainWindow::setupShellUi()
     // 1. Eyebrow badge
     auto *badgeRow = new QHBoxLayout();
     badgeRow->setContentsMargins(0, 0, 0, 0);
-    auto *badge = new QLabel(QStringLiteral("REPOSITORY ARCHITECTURE & HEALTH"), welcomeCard);
+    auto *badge = new QLabel(QStringLiteral("◈ REPOSITORY ARCHITECTURE & HEALTH"), welcomeCard);
     badge->setObjectName(QStringLiteral("welcomeBadge"));
     badgeRow->addWidget(badge);
     badgeRow->addStretch(1);
@@ -181,7 +195,7 @@ void MainWindow::setupShellUi()
     welcomeLayout->addSpacing(22);
 
     // 4. Action Row (Button + Hint)
-    auto *openRepoBtn = new QPushButton(QStringLiteral("Open Repository"), welcomeCard);
+    auto *openRepoBtn = new QPushButton(QStringLiteral("📁 Open Repository"), welcomeCard);
     openRepoBtn->setObjectName(QStringLiteral("btnOpenRepository"));
     openRepoBtn->setCursor(Qt::PointingHandCursor);
     connect(openRepoBtn, &QPushButton::clicked, this, &MainWindow::onOpenRepositoryClicked);
@@ -232,11 +246,11 @@ void MainWindow::setupShellUi()
         return pillar;
     };
 
-    pillarsRow->addWidget(createPillar(QStringLiteral("CHURN & HOTSPOTS"),
+    pillarsRow->addWidget(createPillar(QStringLiteral("🔥 CHURN & HOTSPOTS"),
                                        QStringLiteral("Track high-frequency file changes and active development areas.")));
-    pillarsRow->addWidget(createPillar(QStringLiteral("CONTRIBUTORS"),
+    pillarsRow->addWidget(createPillar(QStringLiteral("👥 CONTRIBUTORS"),
                                        QStringLiteral("Aggregate authorship patterns and collaborative dynamics.")));
-    pillarsRow->addWidget(createPillar(QStringLiteral("INTEGRITY"),
+    pillarsRow->addWidget(createPillar(QStringLiteral("🛡️ INTEGRITY"),
                                        QStringLiteral("Inspect working tree health, branch state, and commit footprint.")));
 
     welcomeLayout->addLayout(pillarsRow);
@@ -253,7 +267,16 @@ void MainWindow::setupShellUi()
 
     m_contentStack->addWidget(overviewPage); // index 0
 
-    // --- Page 1: Commits ---
+    // --- Page 1: Dashboard ---
+    auto *dashboardScroll = new QScrollArea(this);
+    dashboardScroll->setObjectName(QStringLiteral("dashboardScrollArea"));
+    dashboardScroll->setWidgetResizable(true);
+    m_dashboardWidget = new DashboardWidget(dashboardScroll);
+    dashboardScroll->setWidget(m_dashboardWidget);
+    dashboardScroll->setStyleSheet(QStringLiteral("QScrollArea { background: transparent; border: none; }"));
+    m_contentStack->addWidget(dashboardScroll); // index 1
+
+    // --- Page 2: Commits ---
     auto *commitsPage = new QWidget();
     commitsPage->setObjectName(QStringLiteral("mainAreaWidget"));
 
@@ -265,14 +288,14 @@ void MainWindow::setupShellUi()
     commitsHeaderLayout->setContentsMargins(0, 0, 0, 0);
     commitsHeaderLayout->setSpacing(4);
 
-    auto *commitsBadge = new QLabel(QStringLiteral("VERSION CONTROL TIMELINE"), commitsPage);
+    auto *commitsBadge = new QLabel(QStringLiteral("⎇ VERSION CONTROL TIMELINE"), commitsPage);
     commitsBadge->setObjectName(QStringLiteral("pageBadge"));
     auto *commitsBadgeRow = new QHBoxLayout();
     commitsBadgeRow->setContentsMargins(0, 0, 0, 0);
     commitsBadgeRow->addWidget(commitsBadge);
     commitsBadgeRow->addStretch(1);
 
-    auto *commitsHeader = new QLabel(QStringLiteral("Commit History"), commitsPage);
+    auto *commitsHeader = new QLabel(QStringLiteral("⎇ Commit History"), commitsPage);
     commitsHeader->setObjectName(QStringLiteral("pageHeader"));
 
     auto *commitsDesc = new QLabel(
@@ -324,14 +347,14 @@ void MainWindow::setupShellUi()
     contribHeaderLayout->setContentsMargins(0, 0, 0, 0);
     contribHeaderLayout->setSpacing(4);
 
-    auto *contributorsBadge = new QLabel(QStringLiteral("AUTHORSHIP & COLLABORATION"), contributorsPage);
+    auto *contributorsBadge = new QLabel(QStringLiteral("👥 AUTHORSHIP & COLLABORATION"), contributorsPage);
     contributorsBadge->setObjectName(QStringLiteral("pageBadge"));
     auto *contribBadgeRow = new QHBoxLayout();
     contribBadgeRow->setContentsMargins(0, 0, 0, 0);
     contribBadgeRow->addWidget(contributorsBadge);
     contribBadgeRow->addStretch(1);
 
-    auto *contributorsHeader = new QLabel(QStringLiteral("Contributors"), contributorsPage);
+    auto *contributorsHeader = new QLabel(QStringLiteral("👥 Contributors"), contributorsPage);
     contributorsHeader->setObjectName(QStringLiteral("pageHeader"));
 
     auto *contributorsDesc = new QLabel(
@@ -381,14 +404,14 @@ void MainWindow::setupShellUi()
     hotspotsHeaderLayout->setContentsMargins(0, 0, 0, 0);
     hotspotsHeaderLayout->setSpacing(4);
 
-    auto *hotspotsBadge = new QLabel(QStringLiteral("CODE CHURN & RISK ANALYSIS"), hotspotsPage);
+    auto *hotspotsBadge = new QLabel(QStringLiteral("🔥 CODE CHURN & RISK ANALYSIS"), hotspotsPage);
     hotspotsBadge->setObjectName(QStringLiteral("pageBadge"));
     auto *hotspotsBadgeRow = new QHBoxLayout();
     hotspotsBadgeRow->setContentsMargins(0, 0, 0, 0);
     hotspotsBadgeRow->addWidget(hotspotsBadge);
     hotspotsBadgeRow->addStretch(1);
 
-    auto *hotspotsHeader = new QLabel(QStringLiteral("Hotspots"), hotspotsPage);
+    auto *hotspotsHeader = new QLabel(QStringLiteral("🔥 Hotspots"), hotspotsPage);
     hotspotsHeader->setObjectName(QStringLiteral("pageHeader"));
 
     auto *hotspotsDesc = new QLabel(
@@ -439,14 +462,14 @@ void MainWindow::setupShellUi()
     healthHeaderLayout->setContentsMargins(0, 0, 0, 0);
     healthHeaderLayout->setSpacing(4);
 
-    auto *healthBadge = new QLabel(QStringLiteral("REPOSITORY INTEGRITY"), healthPage);
+    auto *healthBadge = new QLabel(QStringLiteral("🛡️ REPOSITORY INTEGRITY"), healthPage);
     healthBadge->setObjectName(QStringLiteral("pageBadge"));
     auto *healthBadgeRow = new QHBoxLayout();
     healthBadgeRow->setContentsMargins(0, 0, 0, 0);
     healthBadgeRow->addWidget(healthBadge);
     healthBadgeRow->addStretch(1);
 
-    auto *healthHeader = new QLabel(QStringLiteral("Repository Health"), healthPage);
+    auto *healthHeader = new QLabel(QStringLiteral("🛡️ Repository Health"), healthPage);
     healthHeader->setObjectName(QStringLiteral("pageHeader"));
 
     auto *healthDesc = new QLabel(
@@ -492,10 +515,10 @@ void MainWindow::setupShellUi()
         return card;
     };
 
-    cardsRow->addWidget(createMetricCard(QStringLiteral("TOTAL COMMITS"), m_healthCommitsValue));
-    cardsRow->addWidget(createMetricCard(QStringLiteral("CONTRIBUTORS"), m_healthContributorsValue));
-    cardsRow->addWidget(createMetricCard(QStringLiteral("TRACKED FILES"), m_healthFilesValue));
-    cardsRow->addWidget(createMetricCard(QStringLiteral("CURRENT BRANCH"), m_healthBranchValue));
+    cardsRow->addWidget(createMetricCard(QStringLiteral("⎇ TOTAL COMMITS"), m_healthCommitsValue));
+    cardsRow->addWidget(createMetricCard(QStringLiteral("👥 CONTRIBUTORS"), m_healthContributorsValue));
+    cardsRow->addWidget(createMetricCard(QStringLiteral("📁 TRACKED FILES"), m_healthFilesValue));
+    cardsRow->addWidget(createMetricCard(QStringLiteral("🌿 CURRENT BRANCH"), m_healthBranchValue));
 
     // Detailed metrics table
     m_healthTable = new QTableWidget(0, 3, healthPage);
@@ -544,6 +567,8 @@ void MainWindow::onNavigationClicked(int activeIndex)
     if (m_contentStack) {
         m_contentStack->setCurrentIndex(activeIndex);
     }
+    // Sync gear rotation to page selection
+    updateGearState();
 }
 
 void MainWindow::onOpenRepositoryClicked()
@@ -565,6 +590,20 @@ void MainWindow::onOpenRepositoryClicked()
 
 bool MainWindow::validateAndOpenRepository(const QString &dirPath)
 {
+    if (dirPath.trimmed().isEmpty()) {
+        return false;
+    }
+
+    const QFileInfo dirInfo(dirPath);
+    if (!dirInfo.exists() || !dirInfo.isDir()) {
+        QMessageBox::warning(
+            this,
+            tr("Invalid Repository"),
+            tr("Please select a valid Git repository. The selected folder is not a valid Git working tree.")
+        );
+        return false;
+    }
+
     if (!m_gitClient.isGitAvailable()) {
         QMessageBox::critical(
             this,
@@ -574,47 +613,36 @@ bool MainWindow::validateAndOpenRepository(const QString &dirPath)
         return false;
     }
 
-    // 1. Verify that dirPath is inside a valid Git work tree
+    // 1. Verify that dirPath is inside a valid Git work tree using actual git rev-parse check
     QString workTreeError;
     if (!m_gitClient.isInsideWorkTree(dirPath, &workTreeError)) {
-        m_repositoryPath.clear();
-        m_currentBranch.clear();
-        // Polymorphic clear: dispatch through the shared GitService interface.
-        for (GitService *svc : m_services) {
-            svc->clear();
-        }
-
-        if (m_sidebarStatusLabel) {
-            m_sidebarStatusLabel->setText(QStringLiteral("● No repository loaded"));
-        }
-        if (m_statusLabel) {
-            m_statusLabel->setText(QStringLiteral("No repository loaded"));
-        }
-        loadCommitHistory();
-        loadContributors();
-        loadHotspots();
-        loadRepositoryHealth();
-
-        const QString detail = workTreeError.isEmpty()
-            ? tr("The directory does not appear to be a Git repository.")
-            : workTreeError;
-
+        // Preserve previous repository state and existing analytics
         QMessageBox::warning(
             this,
             tr("Invalid Repository"),
-            tr("Cannot open '%1':\n\n%2").arg(QDir::toNativeSeparators(dirPath), detail)
+            tr("Please select a valid Git repository. The selected folder is not a valid Git working tree.")
         );
         return false;
     }
 
     // 2. Resolve top-level root (supports worktrees, subfolders, and submodules)
     const QString repoRoot = m_gitClient.getTopLevel(dirPath);
-    const QString repoName = QFileInfo(repoRoot).fileName();
+    const QFileInfo repoRootInfo(repoRoot);
+    if (repoRoot.trimmed().isEmpty() || !repoRootInfo.exists() || !repoRootInfo.isDir()) {
+        QMessageBox::warning(
+            this,
+            tr("Invalid Repository"),
+            tr("Please select a valid Git repository. The selected folder is not a valid Git working tree.")
+        );
+        return false;
+    }
+
+    const QString repoName = repoRootInfo.fileName();
 
     // 3. Query current branch name or detached HEAD
     const QString branch = m_gitClient.getCurrentBranch(repoRoot);
 
-    // 4. Update repository state
+    // 4. Update repository state only after successful validation
     m_repositoryPath = repoRoot;
     m_currentBranch = branch;
 
@@ -641,6 +669,11 @@ bool MainWindow::validateAndOpenRepository(const QString &dirPath)
     loadContributors();
     loadHotspots();
     loadRepositoryHealth();
+    loadDashboard();
+
+    // Automatically navigate to Dashboard (index 1) so user immediately sees intelligence
+    onNavigationClicked(1);
+    // updateGearState() is called inside onNavigationClicked above
 
     return true;
 }
@@ -697,16 +730,25 @@ void MainWindow::loadCommitHistory()
 
         auto *hashItem = makeItem(commits[row].hash);
         hashItem->setFont(monoFont);
-        hashItem->setForeground(QColor(QStringLiteral("#45563d")));
+        hashItem->setForeground(QColor(QStringLiteral("#ff2d95")));
 
         auto *subjectItem = makeItem(commits[row].subject);
-        subjectItem->setForeground(QColor(QStringLiteral("#242724")));
+        subjectItem->setForeground(QColor(QStringLiteral("#f1f5f9")));
 
-        auto *authorItem = makeItem(commits[row].author);
-        authorItem->setForeground(QColor(QStringLiteral("#4a4d46")));
+        const QString resolvedAuthor = GitAnalyticsService::canonicalContributorName(commits[row].author, commits[row].authorEmail);
+        auto *authorItem = makeItem(resolvedAuthor);
+        if (resolvedAuthor == QStringLiteral("Tanuja 658")) {
+            authorItem->setForeground(QColor(QStringLiteral("#e000ff")));
+        } else {
+            authorItem->setForeground(QColor(QStringLiteral("#22d3ee")));
+        }
+        if (commits[row].author != resolvedAuthor && !commits[row].author.isEmpty()) {
+            authorItem->setToolTip(QStringLiteral("Original author: %1%2")
+                .arg(commits[row].author, commits[row].authorEmail.isEmpty() ? QString() : QStringLiteral(" <%1>").arg(commits[row].authorEmail)));
+        }
 
         auto *dateItem = makeItem(commits[row].date);
-        dateItem->setForeground(QColor(QStringLiteral("#686b63")));
+        dateItem->setForeground(QColor(QStringLiteral("#94a3b8")));
 
         m_commitsTable->setItem(row, 0, hashItem);
         m_commitsTable->setItem(row, 1, subjectItem);
@@ -764,16 +806,16 @@ void MainWindow::loadContributors()
         };
 
         auto *authorItem = makeItem(contributors[row].name);
-        authorItem->setForeground(QColor(QStringLiteral("#202320")));
+        authorItem->setForeground(QColor(QStringLiteral("#f1f5f9")));
 
         auto *countItem = new QTableWidgetItem();
         countItem->setData(Qt::DisplayRole, contributors[row].commits);
         countItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
         countItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        countItem->setForeground(QColor(QStringLiteral("#384d31")));
+        countItem->setForeground(QColor(QStringLiteral("#22d3ee")));
 
         auto *dateItem = makeItem(contributors[row].latestDate);
-        dateItem->setForeground(QColor(QStringLiteral("#686b63")));
+        dateItem->setForeground(QColor(QStringLiteral("#94a3b8")));
 
         m_contributorsTable->setItem(row, 0, authorItem);
         m_contributorsTable->setItem(row, 1, countItem);
@@ -838,16 +880,16 @@ void MainWindow::loadHotspots()
 
         auto *fileItem = makeItem(hotspots[row].filePath);
         fileItem->setFont(monoFont);
-        fileItem->setForeground(QColor(QStringLiteral("#242724")));
+        fileItem->setForeground(QColor(QStringLiteral("#f1f5f9")));
 
         auto *countItem = new QTableWidgetItem();
         countItem->setData(Qt::DisplayRole, hotspots[row].commits);
         countItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
         countItem->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        countItem->setForeground(QColor(QStringLiteral("#526649")));
+        countItem->setForeground(QColor(QStringLiteral("#22d3ee")));
 
         auto *dateItem = makeItem(hotspots[row].latestDate);
-        dateItem->setForeground(QColor(QStringLiteral("#686b63")));
+        dateItem->setForeground(QColor(QStringLiteral("#94a3b8")));
 
         m_hotspotsTable->setItem(row, 0, fileItem);
         m_hotspotsTable->setItem(row, 1, countItem);
@@ -930,20 +972,22 @@ void MainWindow::loadRepositoryHealth()
 
     for (int r = 0; r < data.metricsTable.size(); ++r) {
         auto *nameItem = makeItem(data.metricsTable[r].name);
-        nameItem->setForeground(QColor(QStringLiteral("#202320")));
+        nameItem->setForeground(QColor(QStringLiteral("#f1f5f9")));
 
         auto *valItem = makeItem(data.metricsTable[r].value);
-        valItem->setForeground(QColor(QStringLiteral("#202320")));
+        valItem->setForeground(QColor(QStringLiteral("#f1f5f9")));
 
         // Visual emphasis grounded strictly in actual data:
         if (data.metricsTable[r].name.contains(QStringLiteral("Working Tree"), Qt::CaseInsensitive)) {
             if (data.metricsTable[r].value.contains(QStringLiteral("Clean"), Qt::CaseInsensitive)) {
-                valItem->setForeground(QColor(QStringLiteral("#526649")));
+                valItem->setForeground(QColor(QStringLiteral("#34d399")));
+            } else {
+                valItem->setForeground(QColor(QStringLiteral("#ffb547")));
             }
         }
 
         auto *detailItem = makeItem(data.metricsTable[r].detail);
-        detailItem->setForeground(QColor(QStringLiteral("#565954")));
+        detailItem->setForeground(QColor(QStringLiteral("#94a3b8")));
 
         m_healthTable->setItem(r, 0, nameItem);
         m_healthTable->setItem(r, 1, valItem);
@@ -955,3 +999,40 @@ void MainWindow::applyTheme()
 {
     Theme::applyTheme(this);
 }
+
+// ---------------------------------------------------------------------------
+// Gear state management
+// ---------------------------------------------------------------------------
+
+void MainWindow::updateGearState()
+{
+    if (!m_gearWidget)
+        return;
+
+    // The gear rotates only when:
+    //  1. A repository has been successfully loaded (m_repositoryPath is set), AND
+    //  2. The Dashboard page (index 1 in m_contentStack) is the active page.
+    const bool dashboardActive =
+        m_contentStack && (m_contentStack->currentIndex() == 1);
+    const bool repoLoaded = !m_repositoryPath.isEmpty();
+
+    m_gearWidget->setActive(repoLoaded && dashboardActive);
+}
+
+void MainWindow::loadDashboard()
+{
+    if (!m_dashboardWidget) {
+        return;
+    }
+
+    if (m_repositoryPath.isEmpty() || !m_healthService.isLoaded() || !m_analyticsService.isLoaded()) {
+        m_dashboardWidget->clearData();
+        return;
+    }
+
+    m_dashboardWidget->updateData(m_healthService.healthData(),
+                                 m_analyticsService,
+                                 m_repositoryPath,
+                                 m_currentBranch);
+}
+
