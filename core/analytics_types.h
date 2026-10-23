@@ -3,6 +3,24 @@
 
 #include <QString>
 #include <QList>
+#include <QDate>
+
+/**
+ * @brief Represents commit count on a specific calendar date within an activity window.
+ */
+struct CommitActivityBucket {
+    QDate date;
+    int commitCount{0};
+};
+
+/**
+ * @brief Aggregated commit activity series across a time window.
+ */
+struct CommitActivityData {
+    QList<CommitActivityBucket> buckets;
+    int totalCommits{0};
+    bool isTruncated{false}; // True if older commits in the window were omitted due to query capping
+};
 
 /**
  * @brief Represents an individual commit record parsed from the Git log.
@@ -12,6 +30,7 @@ struct CommitRecord {
     QString subject;
     QString author;
     QString date;
+    QString authorEmail{};
 };
 
 /**

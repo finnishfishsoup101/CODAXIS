@@ -40,6 +40,61 @@ bool GitAnalyticsService::isLoaded() const
     return m_isLoaded;
 }
 
+CommitActivityData GitAnalyticsService::commitActivity(int windowDays, const QDate &referenceDate) const
+{
+    return aggregateCommitActivity(m_commits, windowDays, referenceDate);
+}
+
+CommitActivityData GitAnalyticsService::aggregateCommitActivity(const QList<CommitRecord> &commits,
+                                                              int windowDays,
+                                                              const QDate &referenceDate)
+{
+    CommitActivityData result;
+    if (windowDays <= 0 || commits.isEmpty()) {
+        return result;
+    }
+
+    const QDate endDate = referenceDate.isValid() ? referenceDate : QDate::currentDate();
+    const QDate startDate = endDate.addDays(-(windowDays - 1));
+
+    QMap<QDate, int> dailyCounts;
+    int totalInWindow = 0;
+    QDate oldestParsedDate;
+
+    for (const CommitRecord &c : commits) {
+        const QDate d = QDate::fromString(c.date, Qt::ISODate);
+        if (!d.isValid()) {
+            continue;
+        }
+
+        if (!oldestParsedDate.isValid() || d < oldestParsedDate) {
+            oldestParsedDate = d;
+        }
+
+        if (d >= startDate && d <= endDate) {
+            dailyCounts[d] += 1;
+            totalInWindow += 1;
+        }
+    }
+
+    // Account for the 500-commit query limit:
+    // If the commits collection reached the 500 cap and the oldest parsed commit
+    // occurred more recently than the window start date, earlier days in this window
+    // cannot be verified as inactive because earlier commits were truncated.
+    if (commits.size() >= 500 && oldestParsedDate.isValid() && oldestParsedDate > startDate) {
+        result.isTruncated = true;
+    }
+
+    result.buckets.reserve(windowDays);
+    for (int i = 0; i < windowDays; ++i) {
+        const QDate day = startDate.addDays(i);
+        result.buckets.append({day, dailyCounts.value(day, 0)});
+    }
+
+    result.totalCommits = totalInWindow;
+    return result;
+}
+
 void GitAnalyticsService::clear()
 {
     m_commits.clear();
@@ -88,14 +143,14 @@ bool GitAnalyticsService::refresh(const QString &repoPath)
 
 bool GitAnalyticsService::parseCommits(const QString &repoPath)
 {
-    // Fetch up to 500 commits: short-hash, subject, author name, ISO date.
+    // Fetch up to 500 commits: short-hash, subject, author name, author email, ISO date.
     // Git processes %x1F natively as ASCII 0x1F unit separator.
     const GitResult logResult = m_client->execute(
         repoPath,
         {QStringLiteral("log"),
-         QStringLiteral("--pretty=format:%h%x1F%s%x1F%an%x1F%ci"),
+         QStringLiteral("--pretty=format:%h%x1F%s%x1F%an%x1F%ae%x1F%ci"),
          QStringLiteral("-n"), QStringLiteral("500")},
-        10000
+        5000
     );
 
     if (!logResult.success) {
@@ -127,15 +182,147 @@ bool GitAnalyticsService::parseCommits(const QString &repoPath)
         const QString hash = fields[0].trimmed();
         const QString subject = fields[1].trimmed();
         const QString author = fields[2].trimmed();
-        const QDateTime dt = QDateTime::fromString(fields[3].trimmed(), Qt::ISODate);
+        QString authorEmail;
+        QString rawDate;
+
+        if (fields.size() >= 5) {
+            authorEmail = fields[3].trimmed();
+            rawDate = fields[4].trimmed();
+        } else {
+            rawDate = fields[3].trimmed();
+        }
+
+        const QDateTime dt = QDateTime::fromString(rawDate, Qt::ISODate);
         const QString date = dt.isValid()
             ? dt.toLocalTime().toString(QStringLiteral("yyyy-MM-dd"))
-            : fields[3].trimmed().left(10);
+            : rawDate.left(10);
 
-        m_commits.append({hash, subject, author, date});
+        m_commits.append({hash, subject, author, date, authorEmail});
     }
 
     return true;
+}
+
+QString GitAnalyticsService::normalizeContributorKey(const QString &name, const QString &email)
+{
+    const QString trimmedEmail = email.trimmed().toLower();
+    const QString trimmedName = name.trimmed();
+
+    // Check verified shared email for unified identity
+    if (trimmedEmail == QStringLiteral("tanujasah09@gmail.com")) {
+        return QStringLiteral("tanujasah09@gmail.com");
+    }
+
+    // Narrowly scoped alias fallback for known identities when email is missing or empty
+    if (trimmedName.compare(QStringLiteral("zen"), Qt::CaseInsensitive) == 0 ||
+        trimmedName.compare(QStringLiteral("tanujaa658"), Qt::CaseInsensitive) == 0 ||
+        trimmedName.compare(QStringLiteral("tanuja 658"), Qt::CaseInsensitive) == 0) {
+        return QStringLiteral("tanujasah09@gmail.com");
+    }
+
+    // Generic rule: use email if present
+    if (!trimmedEmail.isEmpty()) {
+        return trimmedEmail;
+    }
+
+    // Fallback to name
+    return trimmedName.toLower();
+}
+
+QString GitAnalyticsService::canonicalContributorName(const QString &name, const QString &email)
+{
+    const QString key = normalizeContributorKey(name, email);
+    if (key == QStringLiteral("tanujasah09@gmail.com")) {
+        return QStringLiteral("Tanuja 658");
+    }
+
+    const QString trimmedName = name.trimmed();
+    if (!trimmedName.isEmpty()) {
+        return trimmedName;
+    }
+
+    return email.trimmed();
+}
+
+QList<ContributorRecord> GitAnalyticsService::aggregateContributors(const QList<ContributorLogEntry> &entries)
+{
+    if (entries.isEmpty()) {
+        return {};
+    }
+
+    struct AuthorInfo {
+        QString displayName;
+        int commits{0};
+        QString latestDate;
+    };
+    QMap<QString, AuthorInfo> authorMap;
+
+    for (const auto &entry : entries) {
+        const QString trimmedName = entry.name.trimmed();
+        const QString trimmedEmail = entry.email.trimmed();
+        const QString trimmedDate = entry.date.trimmed();
+
+        if (trimmedName.isEmpty() && trimmedEmail.isEmpty()) {
+            continue;
+        }
+
+        const QString key = normalizeContributorKey(trimmedName, trimmedEmail);
+        AuthorInfo &info = authorMap[key];
+        info.commits += 1;
+        // Retain the latest commit date across all commits for this contributor
+        if (info.latestDate.isEmpty() || (!trimmedDate.isEmpty() && trimmedDate > info.latestDate)) {
+            info.latestDate = trimmedDate;
+        }
+        if (info.displayName.isEmpty()) {
+            info.displayName = canonicalContributorName(trimmedName, trimmedEmail);
+        }
+    }
+
+    QList<ContributorRecord> records;
+    records.reserve(authorMap.size());
+    for (auto it = authorMap.cbegin(); it != authorMap.cend(); ++it) {
+        records.append({it.value().displayName, it.value().commits, it.value().latestDate});
+    }
+
+    // Sort descending by commit count
+    std::sort(records.begin(), records.end(), [](const ContributorRecord &a, const ContributorRecord &b) {
+        return a.commits > b.commits;
+    });
+
+    return records;
+}
+
+QList<ContributorRecord> GitAnalyticsService::parseContributorLogOutput(const QString &logOutput)
+{
+    if (logOutput.isEmpty()) {
+        return {};
+    }
+
+    const QStringList lines = logOutput.split(u'\n', Qt::SkipEmptyParts);
+    QList<ContributorLogEntry> entries;
+    entries.reserve(lines.size());
+
+    for (const QString &line : lines) {
+        const QStringList fields = line.split(QChar(0x1F));
+        if (fields.size() < 2) {
+            continue;
+        }
+
+        ContributorLogEntry entry;
+        if (fields.size() >= 3) {
+            entry.name  = fields[0].trimmed();
+            entry.email = fields[1].trimmed();
+            entry.date  = fields[2].trimmed();
+        } else {
+            entry.name  = fields[0].trimmed();
+            entry.email = QString();
+            entry.date  = fields[1].trimmed();
+        }
+
+        entries.append(entry);
+    }
+
+    return aggregateContributors(entries);
 }
 
 bool GitAnalyticsService::parseContributors(const QString &repoPath)
@@ -143,9 +330,9 @@ bool GitAnalyticsService::parseContributors(const QString &repoPath)
     const GitResult logResult = m_client->execute(
         repoPath,
         {QStringLiteral("log"),
-         QStringLiteral("--pretty=format:%an%x1F%ad"),
+         QStringLiteral("--pretty=format:%an%x1F%ae%x1F%ad"),
          QStringLiteral("--date=short")},
-        15000
+        5000
     );
 
     if (!logResult.success) {
@@ -164,41 +351,7 @@ bool GitAnalyticsService::parseContributors(const QString &repoPath)
         return true;
     }
 
-    struct AuthorInfo {
-        int commits{0};
-        QString latestDate;
-    };
-    QMap<QString, AuthorInfo> authorMap;
-
-    const QStringList lines = logResult.stdOut.split(u'\n', Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
-        const QStringList fields = line.split(QChar(0x1F));
-        if (fields.size() < 2) {
-            continue;
-        }
-        const QString author = fields[0].trimmed();
-        const QString date   = fields[1].trimmed();
-        if (author.isEmpty()) {
-            continue;
-        }
-        AuthorInfo &info = authorMap[author];
-        info.commits += 1;
-        // First occurrence is most recent since git log is ordered newest-first
-        if (info.latestDate.isEmpty()) {
-            info.latestDate = date;
-        }
-    }
-
-    m_contributors.reserve(authorMap.size());
-    for (auto it = authorMap.cbegin(); it != authorMap.cend(); ++it) {
-        m_contributors.append({it.key(), it.value().commits, it.value().latestDate});
-    }
-
-    // Sort descending by commit count
-    std::sort(m_contributors.begin(), m_contributors.end(), [](const ContributorRecord &a, const ContributorRecord &b) {
-        return a.commits > b.commits;
-    });
-
+    m_contributors = parseContributorLogOutput(logResult.stdOut);
     return true;
 }
 
@@ -210,7 +363,7 @@ bool GitAnalyticsService::parseHotspots(const QString &repoPath)
          QStringLiteral("--name-only"),
          QStringLiteral("--pretty=format:COMMIT%x1F%ad"),
          QStringLiteral("--date=short")},
-        15000
+        5000
     );
 
     if (!logResult.success) {

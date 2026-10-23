@@ -27,6 +27,24 @@ public:
     const QList<HotspotRecord>& hotspots() const;
     bool isLoaded() const;
 
+    // Time-window commit activity aggregation
+    static CommitActivityData aggregateCommitActivity(const QList<CommitRecord> &commits,
+                                                      int windowDays = 30,
+                                                      const QDate &referenceDate = QDate::currentDate());
+    CommitActivityData commitActivity(int windowDays = 30,
+                                      const QDate &referenceDate = QDate::currentDate()) const;
+
+    // Contributor aggregation and identity normalization
+    struct ContributorLogEntry {
+        QString name;
+        QString email;
+        QString date;
+    };
+    static QString normalizeContributorKey(const QString &name, const QString &email);
+    static QString canonicalContributorName(const QString &name, const QString &email);
+    static QList<ContributorRecord> aggregateContributors(const QList<ContributorLogEntry> &entries);
+    static QList<ContributorRecord> parseContributorLogOutput(const QString &logOutput);
+
 private:
     bool parseCommits(const QString &repoPath);
     bool parseContributors(const QString &repoPath);
