@@ -236,44 +236,324 @@ QString Theme::styleSheet()
             font-weight: 800;
         }
 
+        /* --- Repository Health Page — Two-Column Layout --- */
+
+        /* Left panel: snapshot frame card */
+        QFrame#hrSnapshotFrame {
+            background: rgba(14, 11, 22, 0.70);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            border-radius: 12px;
+        }
+
+        /* Panel title bar */
+        QWidget#hrPanelTitleBar {
+            background: rgba(20, 15, 34, 0.85);
+            border-radius: 11px 11px 0 0;
+        }
+
+        QLabel#hrPanelTitle {
+            color: #7b72a8;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.10em;
+        }
+
+        /* Hairline separator under title bar */
+        QFrame#hrSeparator {
+            background: rgba(139, 92, 246, 0.20);
+            border: none;
+        }
+
+        /* Scrollable metric rows — transparent background */
+        QScrollArea#hrSnapshotScroll,
+        QWidget#hrSnapshotContent {
+            background: transparent;
+        }
+
+        /* Alternating metric rows */
+        QFrame#hrMetricRow {
+            background: rgba(22, 18, 36, 0.55);
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.035);
+        }
+
+        QFrame#hrMetricRowAlt {
+            background: rgba(30, 24, 48, 0.50);
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.035);
+        }
+
+        /* Row cell typography */
+        QLabel#hrRowIcon {
+            color: #7b72a8;
+            font-size: 13px;
+        }
+
+        QLabel#hrRowLabel {
+            color: #8b7fc2;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        QLabel#hrRowValue {
+            color: #e2dff0;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        /* Status overlay (empty / error) */
+        QLabel#hrStatusOverlay {
+            color: #64748b;
+            font-size: 13px;
+            padding: 24px;
+        }
+
+        /* Right panel cards */
+        QFrame#hrRightCard {
+            background: rgba(14, 11, 22, 0.70);
+            border: 1px solid rgba(99, 102, 241, 0.22);
+            border-radius: 12px;
+        }
+
+        /* Card section titles */
+        QLabel#hrCardTitle {
+            color: #7b72a8;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.10em;
+        }
+
+        /* Working Tree status variants */
+        QLabel#hrWtStatusClean {
+            color: #34d399;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        QLabel#hrWtStatusDirty {
+            color: #ffb547;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        /* Card internal separator */
+        QFrame#hrCardSeparator {
+            background: rgba(255, 255, 255, 0.07);
+            border: none;
+        }
+
+        /* Card detail / subtext */
+        QLabel#hrCardDetail {
+            color: #94a3b8;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        /* Latest Commit card elements */
+        QLabel#hrCommitHash {
+            color: #c084fc;
+            font-size: 16px;
+            font-weight: 700;
+            font-family: monospace;
+        }
+
+        QLabel#hrCommitDate {
+            color: #64748b;
+            font-size: 11px;
+        }
+
+        QLabel#hrCommitMsg {
+            color: #cbd5e1;
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
         /* --- Data Tables (Commits, Contributors, Hotspots, Health) --- */
+        /* --- Commits Page Polish --- */
+        QFrame#commitsTableFrame {
+            background-color: #141020;
+            border: 1px solid rgba(139, 92, 246, 0.22);
+            border-radius: 12px;
+        }
+
+        QLabel#commitsCountBadge {
+            color: #c084fc;
+            background-color: rgba(168, 85, 247, 0.15);
+            border: 1px solid rgba(168, 85, 247, 0.35);
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            padding: 3px 9px;
+        }
+
+        QLabel#commitsBranchBadge {
+            color: #22d3ee;
+            background-color: rgba(34, 211, 238, 0.12);
+            border: 1px solid rgba(34, 211, 238, 0.35);
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+            padding: 3px 9px;
+        }
+
+        QLineEdit#commitsSearchInput {
+            background-color: #171324;
+            color: #f1f5f9;
+            border: 1px solid rgba(139, 92, 246, 0.22);
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 12px;
+            selection-background-color: #8b5cf6;
+        }
+
+        QLineEdit#commitsSearchInput:focus {
+            border: 1px solid #a855f7;
+            background-color: #1b162b;
+        }
+
+        QLineEdit#commitsSearchInput:hover:!focus {
+            border-color: rgba(168, 85, 247, 0.45);
+        }
+
+        QLabel#commitStatChip {
+            color: #cbd5e1;
+            background-color: rgba(22, 18, 34, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 6px 14px;
+        }
+
+        /* --- Commits Table --- */
         QTableWidget#commitsTable {
             background-color: transparent;
-            alternate-background-color: rgba(36, 28, 52, 0.45);
+            alternate-background-color: transparent;
             color: #f1f5f9;
-            border: 1px solid rgba(150, 125, 200, 0.18);
-            border-radius: 10px;
+            border: none;
             font-size: 12px;
             gridline-color: transparent;
-            selection-background-color: rgba(139, 92, 246, 0.32);
+            selection-background-color: transparent;
             selection-color: #ffffff;
             outline: none;
         }
 
-        QTableWidget#commitsTable:focus {
-            border: 1px solid #8b5cf6;
-        }
-
         QTableWidget#commitsTable QHeaderView::section {
-            background-color: rgba(32, 25, 48, 0.9);
-            color: #a89ec0;
+            background-color: #171324;
+            color: #948ba8;
             font-size: 10px;
             font-weight: 700;
-            letter-spacing: 0.5px;
-            padding: 9px 12px;
+            letter-spacing: 0.8px;
+            padding: 11px 14px;
             border: none;
-            border-right: 1px solid rgba(150, 125, 200, 0.15);
-            border-bottom: 2px solid #8b5cf6;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.20);
         }
 
         QTableWidget#commitsTable::item {
-            padding: 8px 12px;
+            padding: 0px;
             border: none;
         }
 
-        QTableWidget#commitsTable::item:selected {
-            background-color: rgba(139, 92, 246, 0.32);
-            color: #ffffff;
+        /* --- Contributors Page Polish --- */
+        QFrame#contributorsTableFrame {
+            background-color: #141020;
+            border: 1px solid rgba(34, 211, 238, 0.20);
+            border-radius: 12px;
+        }
+
+        QLabel#contribStatChip {
+            color: #cbd5e1;
+            background-color: rgba(22, 18, 34, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 6px 14px;
+        }
+
+        QTableWidget#contributorsTable {
+            background-color: transparent;
+            alternate-background-color: rgba(34, 211, 238, 0.03);
+            color: #f1f5f9;
+            border: none;
+            font-size: 12px;
+            gridline-color: transparent;
+            selection-background-color: rgba(34, 211, 238, 0.10);
+            selection-color: #ffffff;
+            outline: none;
+        }
+
+        QTableWidget#contributorsTable QHeaderView::section {
+            background-color: #171324;
+            color: #6dcfdf;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            padding: 12px 16px;
+            border: none;
+            border-bottom: 1px solid rgba(34, 211, 238, 0.18);
+        }
+
+        QTableWidget#contributorsTable::item {
+            padding: 2px 4px;
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        QTableWidget#contributorsTable::item:selected {
+            background-color: rgba(34, 211, 238, 0.10);
+            border-radius: 4px;
+        }
+
+        /* --- Hotspots Page Polish --- */
+        QFrame#hotspotsTableFrame {
+            background: rgba(15, 12, 22, 0.55);
+            border: 1px solid rgba(251, 100, 30, 0.22);
+            border-radius: 10px;
+        }
+
+        QLabel#hotspotStatChip {
+            background: rgba(251, 100, 30, 0.10);
+            color: #fb8c3a;
+            border: 1px solid rgba(251, 100, 30, 0.28);
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        QTableWidget#hotspotsTable {
+            background: transparent;
+            alternate-background-color: rgba(251, 100, 30, 0.03);
+            border: none;
+            border-radius: 0px;
+            gridline-color: transparent;
+            selection-background-color: transparent;
+        }
+
+        QTableWidget#hotspotsTable QHeaderView::section {
+            background: rgba(20, 14, 30, 0.80);
+            color: #fb8c3a;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 8px 12px;
+            border: none;
+            border-bottom: 1px solid rgba(251, 100, 30, 0.25);
+        }
+
+        QTableWidget#hotspotsTable::item {
+            border: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        QTableWidget#hotspotsTable::item:selected {
+            background-color: rgba(251, 100, 30, 0.10);
+            border-radius: 4px;
         }
 
         /* --- Scrollbars --- */

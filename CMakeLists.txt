@@ -107,3 +107,27 @@ target_link_libraries(analytics_test PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
 )
 
+# Screenshot/render helper — shares all CODAXIS sources except main.cpp
+# Added as a proper CMake target so the IDE resolves all Qt and project includes.
+set(CODAXIS_SHARED_SOURCES
+    core/git_client.cpp
+    core/git_service.cpp
+    core/repository_health_service.cpp
+    core/git_analytics_service.cpp
+    ui/theme.cpp
+    ui/repository_canvas.cpp
+    ui/dashboard_widget.cpp
+    ui/gear_widget.cpp
+    mainwindow.cpp
+    mainwindow.h
+    mainwindow.ui
+)
+
+add_executable(render_preview
+    tools/render_preview.cpp
+    ${CODAXIS_SHARED_SOURCES}
+)
+target_link_libraries(render_preview PRIVATE
+    Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::Charts
+)

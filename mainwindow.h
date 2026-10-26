@@ -15,6 +15,7 @@ class MainWindow;
 }
 class QPushButton;
 class QLabel;
+class QLineEdit;
 class QStackedWidget;
 class QTableWidget;
 QT_END_NAMESPACE
@@ -33,6 +34,7 @@ public:
 private slots:
     void onOpenRepositoryClicked();
     void onNavigationClicked(int index);
+    void onCommitFilterChanged(const QString &text);
 
 private:
     void setupShellUi();
@@ -53,13 +55,44 @@ private:
     class GearWidget *m_gearWidget{nullptr};
     class DashboardWidget *m_dashboardWidget{nullptr};
     QTableWidget *m_commitsTable{nullptr};
+    QLineEdit *m_commitsFilterInput{nullptr};
+    QLabel *m_commitsCountBadge{nullptr};
+    QLabel *m_commitsBranchBadge{nullptr};
+    QLabel *m_commitsStatTotal{nullptr};
+    QLabel *m_commitsStatAuthors{nullptr};
+    QLabel *m_commitsStatLatest{nullptr};
     QTableWidget *m_contributorsTable{nullptr};
+    QLabel *m_contribStatTotal{nullptr};
+    QLabel *m_contribStatCommits{nullptr};
+    QLabel *m_contribStatLatest{nullptr};
     QTableWidget *m_hotspotsTable{nullptr};
+    QLabel *m_hotspotStatFiles{nullptr};
+    QLabel *m_hotspotStatTopCount{nullptr};
+    QLabel *m_hotspotStatLatest{nullptr};
     QLabel *m_healthCommitsValue{nullptr};
     QLabel *m_healthContributorsValue{nullptr};
     QLabel *m_healthFilesValue{nullptr};
     QLabel *m_healthBranchValue{nullptr};
+    QLabel *m_healthWorkingTreeChip{nullptr};
+    QLabel *m_healthLatestCommitChip{nullptr};
     QTableWidget *m_healthTable{nullptr};
+    // Per-row labels for the Repository Snapshot panel (left column)
+    QLabel *m_hrRootVal{nullptr};
+    QLabel *m_hrBranchVal{nullptr};
+    QLabel *m_hrCommitsVal{nullptr};
+    QLabel *m_hrContribVal{nullptr};
+    QLabel *m_hrFilesVal{nullptr};
+    QLabel *m_hrTreeVal{nullptr};
+    QLabel *m_hrLatestVal{nullptr};
+    // Right panel — Working Tree card
+    QLabel *m_hrWtStatus{nullptr};
+    QLabel *m_hrWtDetail{nullptr};
+    // Right panel — Latest Commit card
+    QLabel *m_hrCommitHash{nullptr};
+    QLabel *m_hrCommitDate{nullptr};
+    QLabel *m_hrCommitMsg{nullptr};
+    // Status overlay label (shown when no/error state)
+    QLabel *m_hrStatusOverlay{nullptr};
 
     QString m_repositoryPath;
     QString m_currentBranch;
