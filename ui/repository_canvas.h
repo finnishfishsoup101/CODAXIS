@@ -8,20 +8,30 @@
 class QTimer;
 
 /**
- * @brief Subtle repository-inspired background canvas for the Overview page.
- * Renders an ornamental, understated vector Git branch graph using QPainter,
- * evoking commits, branches, and code topology behind the content.
+ * @brief Repository-inspired background canvas for CODAXIS pages.
  *
- * Additive ambient layer (non-breaking):
- *  - Animated data-packet particles that travel horizontally across the canvas
- *  - Gentle ambient depth vignette behind the hero card area
- *  - Dimensional CODAXIS wordmark accent (bottom-left, italic, gradient)
- * Animation pauses automatically when the widget is hidden.
+ * Two operation modes:
+ *
+ *  - Mode::Overview (default): Vivid full-intensity version used as the Overview
+ *    page widget itself. 72 packets, high opacity, wide glow, static branch
+ *    motifs, CODAXIS wordmark. Unchanged from the previous implementation.
+ *
+ *  - Mode::ContentPage: Subtle low-intensity version for Dashboard, Commits,
+ *    Contributors, Hotspots, and Repository Health. 14 packets, low opacity,
+ *    short trails, minimal glow. Fills the background of its parent page via
+ *    Qt's StackAll stacking layout — content widgets are placed on top and
+ *    remain fully interactive.
+ *
+ * In both modes, the animation timer starts on showEvent and pauses on
+ * hideEvent, so there is zero CPU cost while the widget is hidden.
  */
 class RepositoryCanvas : public QWidget {
     Q_OBJECT
 public:
-    explicit RepositoryCanvas(QWidget *parent = nullptr);
+    enum class Mode { Overview, ContentPage };
+
+    explicit RepositoryCanvas(QWidget *parent = nullptr,
+                              Mode mode = Mode::Overview);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -41,15 +51,17 @@ private:
         qreal speed;      ///< pixels per tick
         qreal size;       ///< dot radius
         qreal opacity;    ///< 0.0 – 1.0
-        int   colorType;  ///< 0 = cyan, 1 = violet, 2 = magenta
+        int   colorType;  ///< 0 = cyan, 1 = violet, 2 = magenta, 3 = fuchsia
         qreal trailLen;   ///< trailing glow length in pixels
     };
 
     void initParticles();
+    void paintContentPageBackground(QPainter &painter, int w, int h);
 
     QTimer          *m_timer{nullptr};
     QVector<Particle> m_particles;
     bool              m_particlesReady{false};
+    Mode              m_mode{Mode::Overview};
 };
 
 #endif // REPOSITORY_CANVAS_H

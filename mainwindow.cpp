@@ -9,6 +9,7 @@
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
+#include <QStackedLayout>
 #include <QLabel>
 #include <QPushButton>
 #include <QFrame>
@@ -668,13 +669,27 @@ void MainWindow::setupShellUi()
     m_contentStack->addWidget(overviewPage); // index 0
 
     // --- Page 1: Dashboard ---
+    // The scroll area is wrapped in a StackAll container so the subtle animated
+    // canvas can paint behind it without altering any existing layout or sizing.
     auto *dashboardScroll = new QScrollArea(this);
     dashboardScroll->setObjectName(QStringLiteral("dashboardScrollArea"));
     dashboardScroll->setWidgetResizable(true);
     m_dashboardWidget = new DashboardWidget(dashboardScroll);
     dashboardScroll->setWidget(m_dashboardWidget);
     dashboardScroll->setStyleSheet(QStringLiteral("QScrollArea { background: transparent; border: none; }"));
-    m_contentStack->addWidget(dashboardScroll); // index 1
+
+    // Subtle background container for Dashboard
+    auto *dashboardContainer = new QWidget(this);
+    {
+        auto *sl = new QStackedLayout(dashboardContainer);
+        sl->setStackingMode(QStackedLayout::StackAll);
+        sl->setContentsMargins(0, 0, 0, 0);
+        auto *bg = new RepositoryCanvas(dashboardContainer, RepositoryCanvas::Mode::ContentPage);
+        sl->addWidget(bg);         // slot 0 — background
+        sl->addWidget(dashboardScroll); // slot 1 — content (on top)
+        sl->setCurrentIndex(1);    // keep content on top
+    }
+    m_contentStack->addWidget(dashboardContainer); // index 1
 
     // --- Page 2: Commits ---
     auto *commitsPage = new QWidget();
@@ -782,7 +797,18 @@ void MainWindow::setupShellUi()
     commitsPageLayout->addLayout(toolbarLayout);
     commitsPageLayout->addWidget(tableFrame, 1);
 
-    m_contentStack->addWidget(commitsPage); // index 2
+    // Subtle animated canvas behind Commits page
+    auto *commitsContainer = new QWidget(this);
+    {
+        auto *sl = new QStackedLayout(commitsContainer);
+        sl->setStackingMode(QStackedLayout::StackAll);
+        sl->setContentsMargins(0, 0, 0, 0);
+        auto *bg = new RepositoryCanvas(commitsContainer, RepositoryCanvas::Mode::ContentPage);
+        sl->addWidget(bg);
+        sl->addWidget(commitsPage);
+        sl->setCurrentIndex(1);
+    }
+    m_contentStack->addWidget(commitsContainer); // index 2
 
     // --- Page 2: Contributors ---
     auto *contributorsPage = new QWidget();
@@ -865,7 +891,18 @@ void MainWindow::setupShellUi()
     contributorsLayout->addLayout(contribStatsLayout);
     contributorsLayout->addWidget(contribFrame, 1);
 
-    m_contentStack->addWidget(contributorsPage); // index 2
+    // Subtle animated canvas behind Contributors page
+    auto *contributorsContainer = new QWidget(this);
+    {
+        auto *sl = new QStackedLayout(contributorsContainer);
+        sl->setStackingMode(QStackedLayout::StackAll);
+        sl->setContentsMargins(0, 0, 0, 0);
+        auto *bg = new RepositoryCanvas(contributorsContainer, RepositoryCanvas::Mode::ContentPage);
+        sl->addWidget(bg);
+        sl->addWidget(contributorsPage);
+        sl->setCurrentIndex(1);
+    }
+    m_contentStack->addWidget(contributorsContainer); // index 3
 
     // --- Page 3: Hotspots ---
     auto *hotspotsPage = new QWidget();
@@ -950,7 +987,18 @@ void MainWindow::setupShellUi()
     hotspotsLayout->addLayout(hotspotStatsLayout);
     hotspotsLayout->addWidget(hotspotsFrame, 1);
 
-    m_contentStack->addWidget(hotspotsPage); // index 3
+    // Subtle animated canvas behind Hotspots page
+    auto *hotspotsContainer = new QWidget(this);
+    {
+        auto *sl = new QStackedLayout(hotspotsContainer);
+        sl->setStackingMode(QStackedLayout::StackAll);
+        sl->setContentsMargins(0, 0, 0, 0);
+        auto *bg = new RepositoryCanvas(hotspotsContainer, RepositoryCanvas::Mode::ContentPage);
+        sl->addWidget(bg);
+        sl->addWidget(hotspotsPage);
+        sl->setCurrentIndex(1);
+    }
+    m_contentStack->addWidget(hotspotsContainer); // index 4
 
     // --- Page 4: Repository Health ---
     auto *healthPage = new QWidget();
@@ -1213,7 +1261,18 @@ void MainWindow::setupShellUi()
     healthLayout->addLayout(cardsRow);
     healthLayout->addLayout(bodyRow, 1);
 
-    m_contentStack->addWidget(healthPage); // index 4
+    // Subtle animated canvas behind Repository Health page
+    auto *healthContainer = new QWidget(this);
+    {
+        auto *sl = new QStackedLayout(healthContainer);
+        sl->setStackingMode(QStackedLayout::StackAll);
+        sl->setContentsMargins(0, 0, 0, 0);
+        auto *bg = new RepositoryCanvas(healthContainer, RepositoryCanvas::Mode::ContentPage);
+        sl->addWidget(bg);
+        sl->addWidget(healthPage);
+        sl->setCurrentIndex(1);
+    }
+    m_contentStack->addWidget(healthContainer); // index 5
 
     rootLayout->addWidget(m_contentStack, 1);
 
